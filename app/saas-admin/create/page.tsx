@@ -9,24 +9,28 @@ import {
   Loader2, 
   Zap, 
   Globe, 
-  Wrench 
+  Wrench,
+  Building2 
 } from 'lucide-react';
 
 export default function CreateClientPage() {
+  const [clientName, setClientName] = useState('');
   const [prompt, setPrompt] = useState('');
   const [isBuilding, setIsBuilding] = useState(false);
   const router = useRouter();
 
-  // Quick prompts for your Friday Demo
+  // Quick Start Presets (Updated to include Name)
   const suggestions = [
     { 
       label: 'Global Tech Summit', 
+      name: 'TechFlow Summit 2026', 
       icon: Globe, 
       text: 'A large international technology summit 2026 with speakers, agenda, and tickets.',
       color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
     },
     { 
       label: 'Auto Mechanic Shop', 
+      name: 'Cape Town Diesels', 
       icon: Wrench, 
       text: 'A busy diesel mechanic shop in Cape Town managing mechanics and service bays.',
       color: 'bg-slate-500/20 text-slate-300 border-slate-500/30'
@@ -34,26 +38,30 @@ export default function CreateClientPage() {
   ];
 
   const handleBuild = async () => {
-    if (!prompt) return;
+    // Basic validation
+    if (!prompt || !clientName) return;
+    
     setIsBuilding(true);
 
     try {
-      // 1. Call the "AI" API
+      // 1. Send both fields to the API
       const res = await fetch('/api/saas/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ name: clientName, prompt }),
       });
 
       if (!res.ok) throw new Error('Failed to build');
 
       const newOrg = await res.json();
 
-      // 2. Artificial delay for "Theatrics" (Show off the loader)
+      // 2. Artificial delay for "Theatrics"
       await new Promise(r => setTimeout(r, 1500));
 
-      // 3. Redirect to the new Dashboard
-      router.push(`/${newOrg.slug}/dashboard/speakers`); // Default to speakers for the event demo
+      // 3. Dynamic Redirect (Go to the first generated resource, e.g. /speakers or /mechanics)
+      const firstResource = newOrg.config.resources?.[0]?.key || 'settings';
+      router.push(`/${newOrg.slug}/dashboard/${firstResource}`);
+      
     } catch (error) {
       console.error(error);
       setIsBuilding(false);
@@ -71,7 +79,7 @@ export default function CreateClientPage() {
 
       <div className="z-10 w-full max-w-2xl px-6">
         
-        {/* --- Header Section --- */}
+        {/* --- Header --- */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -82,49 +90,61 @@ export default function CreateClientPage() {
             <Sparkles className="h-8 w-8 text-blue-400" />
           </div>
           <h1 className="text-5xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400 mb-4">
-            What are we building?
+            New Client Deployment
           </h1>
           <p className="text-lg text-gray-400 max-w-lg mx-auto leading-relaxed">
-            Describe the business case, and our engine will construct the backend, database, and dashboard instantly.
+            Define the business identity and let our AI construct the infrastructure.
           </p>
         </motion.div>
 
-        {/* --- Input Card --- */}
+        {/* --- Form Container --- */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="relative group"
+          className="space-y-4"
         >
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 opacity-30 blur transition duration-500 group-hover:opacity-60" />
-          
-          <div className="relative rounded-2xl bg-gray-900/90 border border-white/10 backdrop-blur-xl p-2 shadow-2xl">
-            <div className="relative flex items-center">
+          {/* INPUT 1: Client Name */}
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-focus-within:opacity-30 rounded-2xl transition duration-500 blur" />
+            <div className="relative flex items-center bg-gray-900/90 border border-white/10 backdrop-blur-xl rounded-2xl p-2">
+               <Building2 className="ml-4 h-5 w-5 text-gray-500" />
+               <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                disabled={isBuilding}
+                placeholder="Business Name (e.g. Acme Logistics)"
+                className="w-full bg-transparent border-none text-lg px-4 py-4 text-white placeholder-gray-600 focus:outline-none focus:ring-0"
+              />
+            </div>
+          </div>
+
+          {/* INPUT 2: Description (Prompt) */}
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-30 blur transition duration-500 group-hover:opacity-60" />
+            <div className="relative rounded-2xl bg-gray-900/90 border border-white/10 backdrop-blur-xl p-2 shadow-2xl flex items-center">
               <input
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={isBuilding}
-                placeholder="e.g. A 3-day Design Conference with workshops..."
+                placeholder="Description (e.g. A logistics company managing trucks...)"
                 className="w-full bg-transparent border-none text-lg px-6 py-5 text-white placeholder-gray-500 focus:outline-none focus:ring-0 disabled:opacity-50"
                 onKeyDown={(e) => e.key === 'Enter' && handleBuild()}
               />
               <button
                 onClick={handleBuild}
-                disabled={!prompt || isBuilding}
+                disabled={!prompt || !clientName || isBuilding}
                 className="absolute right-2 mr-1 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
               >
-                {isBuilding ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <ArrowRight className="h-5 w-5" />
-                )}
+                {isBuilding ? <Loader2 className="h-5 w-5 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
               </button>
             </div>
           </div>
         </motion.div>
 
-        {/* --- Suggestions (Quick Start for Demo) --- */}
+        {/* --- Quick Start Presets --- */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -139,9 +159,12 @@ export default function CreateClientPage() {
             {suggestions.map((item, idx) => (
               <button
                 key={idx}
-                onClick={() => setPrompt(item.text)}
+                onClick={() => {
+                  setClientName(item.name);
+                  setPrompt(item.text);
+                }}
                 disabled={isBuilding}
-                className={`group flex items-start gap-4 p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] text-left ${item.color} border border-transparent hover:border-white/10 bg-opacity-10 hover:bg-opacity-20`}
+                className={`group flex items-start gap-4 p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] text-left ${item.color} border-transparent bg-opacity-10 hover:bg-opacity-20`}
               >
                 <div className={`mt-1 rounded-lg p-2 bg-black/20 group-hover:bg-black/40 transition-colors`}>
                   <item.icon className="h-5 w-5" />
@@ -155,7 +178,7 @@ export default function CreateClientPage() {
           </div>
         </motion.div>
 
-        {/* --- Loading Status Text --- */}
+        {/* --- Loading Status --- */}
         <AnimatePresence>
           {isBuilding && (
             <motion.div

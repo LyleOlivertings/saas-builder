@@ -1,23 +1,28 @@
 import { Schema, model, models } from 'mongoose';
 
 const OrganizationSchema = new Schema({
-  name: { type: String, required: true }, // e.g., "Joe's Mechanic Shop"
-  slug: { type: String, unique: true },   // e.g., "joes-mechanics"
-  businessType: { type: String },         // e.g., "mechanic"
+  name: { type: String, required: true },
+  slug: { type: String, unique: true },
+  businessType: { type: String },
   
-  // THE MAGIC: This JSON defines their dashboard
+  // FUTURE-PROOFING:
+  ownerId: { type: String, index: true }, // Who created this? (For Super-Admin later)
+  status: { 
+    type: String, 
+    enum: ['active', 'suspended', 'archived'], 
+    default: 'active' 
+  },
+  
   config: {
     resources: [{
-      key: String,        // e.g., "mechanics" (internal ID)
-      label: String,      // e.g., "Mechanics" (Sidebar Name)
-      singularLabel: String, // e.g., "Mechanic"
-      icon: String,       // e.g., "wrench"
-      fields: [           // What data do we collect for them?
-        { name: String, type: String, label: String } 
-      ]
+      key: String,
+      label: String,
+      singularLabel: String,
+      icon: String,
+      fields: [{ name: String, type: String, label: String }]
     }],
-    themeColor: String    // e.g., "slate-600"
+    themeColor: String
   }
-});
+}, { timestamps: true }); // Automatically adds createdAt / updatedAt
 
 export default models.Organization || model('Organization', OrganizationSchema);

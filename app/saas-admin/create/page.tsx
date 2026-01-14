@@ -60,7 +60,7 @@ export default function CreateClientPage() {
 
       // 3. Dynamic Redirect (Go to the first generated resource, e.g. /speakers or /mechanics)
       const firstResource = newOrg.config.resources?.[0]?.key || 'settings';
-      router.push(`/${newOrg.slug}/dashboard/${firstResource}`);
+      router.push(`/${newOrg.slug}/dashboard/`);
       
     } catch (error) {
       console.error(error);

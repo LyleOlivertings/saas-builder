@@ -119,7 +119,7 @@ export default function DynamicResourcePage({ params }: ResourcePageProps) {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="w-full h-full px-6 lg:px-10 py-8 space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

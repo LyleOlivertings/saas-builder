@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import * as Icons from 'lucide-react'; // Imports all icons to map dynamically
+import * as Icons from 'lucide-react'; 
 import { 
   Menu, 
   X, 
@@ -16,7 +16,6 @@ import {
 
 // A safe way to render dynamic icons from strings
 const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
-  // Capitalize first letter to match Lucide export (e.g. "users" -> "Users")
   const iconName = name.charAt(0).toUpperCase() + name.slice(1);
   const IconComponent = (Icons as any)[iconName] || Icons.Box;
   return <IconComponent className={className} />;
@@ -47,7 +46,7 @@ export default function DashboardShell({
     <div className="min-h-screen bg-[#0a0a0a] text-white flex overflow-hidden">
       
       {/* --- DESKTOP SIDEBAR --- */}
-      <aside className="hidden md:flex w-72 flex-col border-r border-white/10 bg-black/40 backdrop-blur-xl h-screen sticky top-0 z-50">
+      <aside className="hidden md:flex w-72 flex-col border-r border-white/10 bg-black/40 backdrop-blur-xl h-screen sticky top-0 z-40">
         
         {/* Logo Area */}
         <div className="h-20 flex items-center px-8 border-b border-white/5">
@@ -103,7 +102,7 @@ export default function DashboardShell({
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         
         {/* Top Header */}
-        <header className="h-20 border-b border-white/5 bg-black/20 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-40">
+        <header className="h-20 border-b border-white/5 bg-black/20 backdrop-blur-md flex items-center justify-between px-6 lg:px-10 sticky top-0 z-30">
           
           {/* Mobile Toggle */}
           <button 
@@ -140,7 +139,8 @@ export default function DashboardShell({
         </header>
 
         {/* Page Content with Entry Animation */}
-        <main className="flex-1 overflow-auto p-4 md:p-8 relative">
+        <main className="flex-1 overflow-auto bg-[#0a0a0a] relative">
+          
           {/* Background Gradient Blob */}
           <div className={`absolute top-0 left-0 w-[500px] h-[500px] bg-${config.themeColor}-500/10 rounded-full blur-[100px] -z-10 pointer-events-none`} />
           
@@ -149,7 +149,8 @@ export default function DashboardShell({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="max-w-7xl mx-auto"
+            // 🔴 CHANGED HERE: Removed "max-w-7xl mx-auto" and added "w-full h-full"
+            className="w-full h-full"
           >
             {children}
           </motion.div>

@@ -1,139 +1,112 @@
 import { NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai'; // <--- Switched to Google
 import Organization from '@/models/Organization';
 import GenericResource from '@/models/GenericResource'; 
 import dbConnect from '@/lib/dbConnect';
 
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
 export async function POST(req: Request) {
-  // 1. Connect to DB first!
-  await dbConnect(); 
+  try {
+    await dbConnect(); 
+    const { name, prompt } = await req.json();
 
-  // 2. Destructure Name and Prompt
-  const { name, prompt } = await req.json();
-  const lowerPrompt = prompt.toLowerCase();
+    // 1. Generate Slug
+    const generatedSlug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-');
 
-  // 3. Generate Slug from the NAME (not the prompt)
-  const generatedSlug = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // remove special chars
-    .replace(/\s+/g, '-');    // spaces to dashes
-
-  let config = {};
-  let businessType = 'Custom';
-
-  // --- LOGIC: Decide based on the DESCRIPTION (prompt) ---
-  if (lowerPrompt.includes('gym')) {
-    businessType = 'Fitness Center';
-    config = {
-      themeColor: 'emerald',
-      resources: [
-        { 
-          key: 'trainers', 
-          label: 'Trainers', 
-          singularLabel: 'Trainer',
-          icon: 'users',
-          fields: [{ name: 'bio', label: 'Biography', type: 'text' }] 
-        },
-        { 
-          key: 'classes', 
-          label: 'Classes', 
-          singularLabel: 'Class',
-          icon: 'calendar',
-          fields: [{ name: 'time', label: 'Start Time', type: 'date' }] 
-        }
-      ]
-    };
-  } else if (lowerPrompt.includes('mechanic')) {
-    businessType = 'Auto Repair';
-    config = {
-      themeColor: 'slate',
-      resources: [
-        { 
-          key: 'mechanics', 
-          label: 'Mechanics', 
-          singularLabel: 'Mechanic',
-          icon: 'wrench',
-          fields: [{ name: 'specialty', label: 'Specialty', type: 'text' }] 
-        },
-        { 
-          key: 'service-slots', 
-          label: 'Service Bay', 
-          singularLabel: 'Service Slot',
-          icon: 'car',
-          fields: [{ name: 'vehicle', label: 'Car Model', type: 'text' }]
-        }
-      ]
-    };
-  } else {
-    // Default: Events / Conference
-    businessType = 'Conference';
-    config = {
-      themeColor: 'indigo', 
-      resources: [
-        { 
-          key: 'speakers', 
-          label: 'Speakers', 
-          singularLabel: 'Speaker',
-          icon: 'mic',
-          fields: [
-            { name: 'name', label: 'Full Name', type: 'text' },
-            { name: 'role', label: 'Job Title', type: 'text' },
-            { name: 'company', label: 'Company', type: 'text' }
-          ] 
-        },
-        { 
-          key: 'sessions', 
-          label: 'Agenda', 
-          singularLabel: 'Session',
-          icon: 'clock',
-          fields: [
-            { name: 'title', label: 'Session Title', type: 'text' },
-            { name: 'time', label: 'Start Time', type: 'datetime' },
-            { name: 'speaker', label: 'Assigned Speaker', type: 'text' }
-          ] 
-        },
-        {
-          key: 'tickets',
-          label: 'Registrations',
-          singularLabel: 'Ticket',
-          icon: 'ticket',
-          fields: [
-            { name: 'attendee', label: 'Attendee Name', type: 'text' },
-            { name: 'type', label: 'Ticket Type', type: 'select' } 
-          ]
-        }
-      ]
-    };
-  }
-
-  // 4. Create the Organization using the Name and calculated Business Type
-  const newOrg = await Organization.create({
-    name: name,             // From input
-    slug: generatedSlug,    // From input name
-    businessType: businessType, // Derived from prompt logic
-    config: config
-  });
-
-  // 5. Seed Data (Optional: If it's an event, pre-fill it)
-  if (lowerPrompt.includes('conference') || lowerPrompt.includes('event') || lowerPrompt.includes('summit')) {
-    await GenericResource.create([
-      {
-        organizationId: newOrg._id,
-        resourceType: 'speakers',
-        data: { name: 'Sarah Connor', role: 'Security Consultant', company: 'Cyberdyne' }
-      },
-      {
-        organizationId: newOrg._id,
-        resourceType: 'speakers',
-        data: { name: 'Tony Stark', role: 'CTO', company: 'Stark Industries' }
-      },
-      {
-        organizationId: newOrg._id,
-        resourceType: 'sessions',
-        data: { title: 'The Future of AI', time: '2026-03-12 10:00 AM', speaker: 'Tony Stark' }
+    // 2. Configure the Model
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3-flash-preview", // Fast and efficient
+      generationConfig: {
+        responseMimeType: "application/json" // Enforce JSON output
       }
-    ]);
-  }
+    });
 
-  return NextResponse.json(newOrg.toObject());
+    // 3. The Prompt (Gemini needs a clear schema definition)
+    const systemPrompt = `
+      You are a SaaS Architecture Engine. You receive a business description and generate a database schema and initial data for it.
+      
+      You must output a JSON object with this exact structure:
+      {
+        "businessType": "string (e.g. 'Fitness Center')",
+        "themeColor": "string (one of: 'blue', 'indigo', 'emerald', 'slate', 'violet', 'orange')",
+        "resources": [
+          {
+            "key": "string (e.g. 'trainers' - lowercase, plural, no spaces)",
+            "label": "string (e.g. 'Trainers')",
+            "singularLabel": "string (e.g. 'Trainer')",
+            "icon": "string (Lucide icon name, e.g. 'users', 'calendar', 'wrench', 'briefcase', 'ticket')",
+            "fields": [
+              { "name": "string (camelCase)", "label": "string (Title Case)", "type": "string (one of: 'text', 'date', 'datetime', 'select', 'number')" }
+            ],
+            "initialData": [
+              { ...key-value pairs matching the fields above... }
+            ]
+          }
+        ]
+      }
+      
+      Rules:
+      - Create exactly 3 distinct resources relevant to the business.
+      - For each resource, generate 2 realistic items of "initialData".
+      - Ensure fields are simple and useful (3-4 fields per resource).
+    `;
+
+    const userMessage = `Create a SaaS configuration for: ${prompt}. The business name is "${name}".`;
+
+    // 4. Generate Content
+    const result = await model.generateContent([systemPrompt, userMessage]);
+    const response = await result.response;
+    const text = response.text();
+    
+    // Parse the JSON result from Gemini
+    const aiResponse = JSON.parse(text);
+
+    // 5. Construct Config
+    const config = {
+      themeColor: aiResponse.themeColor,
+      resources: aiResponse.resources.map((res: any) => ({
+        key: res.key,
+        label: res.label,
+        singularLabel: res.singularLabel,
+        icon: res.icon,
+        fields: res.fields
+      }))
+    };
+
+    // 6. Create Organization
+    const newOrg = await Organization.create({
+      name: name,
+      slug: generatedSlug,
+      businessType: aiResponse.businessType,
+      config: config
+    });
+
+    // 7. Seed Data
+    const seedPromises = aiResponse.resources.flatMap((res: any) => {
+      return res.initialData.map((item: any) => {
+        return GenericResource.create({
+          organizationId: newOrg._id,
+          resourceType: res.key,
+          data: item
+        });
+      });
+    });
+
+    await Promise.all(seedPromises);
+
+    return NextResponse.json(newOrg.toObject());
+
+  } catch (error: any) {
+    console.error("Gemini Generation Error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to generate SaaS" },
+      { status: 500 }
+    );
+  }
 }
